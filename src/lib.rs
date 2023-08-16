@@ -11,7 +11,7 @@ struct MyType {
 }
 
 static MY_REDIS_TYPE: RedisType = RedisType::new(
-    "tdigest",
+    "t_digest1",
     0,
     raw::RedisModuleTypeMethods {
         version: raw::REDISMODULE_TYPE_METHOD_VERSION as u64,
