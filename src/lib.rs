@@ -1,7 +1,11 @@
 use redis_module::native_types::RedisType;
 use redis_module::{raw, redis_module, Context, RedisResult, NextArg, RedisString, RedisError};
-use std::os::raw::c_void;
-use tdigest::TDigest;
+use tdigest_rs::TDigest;
+use std::os::raw::{c_void};
+use redis_module::RedisModuleIO;
+use redis_module::save_double;
+use redis_module::save_unsigned;
+use tdigest_rs::Centroid;
 
 struct MyType {
     data: TDigest,
@@ -12,8 +16,8 @@ static MY_REDIS_TYPE: RedisType = RedisType::new(
     0,
     raw::RedisModuleTypeMethods {
         version: raw::REDISMODULE_TYPE_METHOD_VERSION as u64,
-        rdb_load: None,
-        rdb_save: None,
+        rdb_load: Some(rdb_load),
+        rdb_save: Some(rdb_save),
         aof_rewrite: None,
         free: Some(free),
 
@@ -37,6 +41,43 @@ static MY_REDIS_TYPE: RedisType = RedisType::new(
         unlink2: None,
     },
 );
+
+unsafe extern "C" fn rdb_save(rdb: *mut RedisModuleIO, value: *mut c_void) {
+    let tdigest: &TDigest = &*(value.cast::<TDigest>());
+    // Save the simple fields
+    save_unsigned(rdb, tdigest.max_size() as u64);
+    save_double(rdb, tdigest.min());
+    save_double(rdb, tdigest.max());
+    save_double(rdb, tdigest.sum());
+    save_double(rdb, tdigest.count());
+    for centroid in tdigest.centroids() {
+        save_double(rdb, centroid.mean());
+        save_double(rdb, centroid.weight());
+    }
+}
+
+unsafe extern "C" fn rdb_load(rdb: *mut RedisModuleIO, encver: i32) -> *mut c_void {
+    if encver != 0 {
+        // Handle unexpected encoding version
+        return std::ptr::null_mut();
+    }
+    // Load the simple fields
+    let max_size = redis_module::load_unsigned(rdb).unwrap() as usize; // if this returns a usize
+    let min = redis_module::load_double(rdb).unwrap();
+    let max = redis_module::load_double(rdb).unwrap();
+    let sum = redis_module::load_double(rdb).unwrap();
+    let count = redis_module::load_double(rdb).unwrap() as usize; // if you need it as usize
+
+    let mut centroids = Vec::new();
+    for _ in 0..count {
+        let mean = redis_module::load_double(rdb).unwrap();
+        let weight = redis_module::load_double(rdb).unwrap();
+        centroids.push(Centroid::new(mean, weight));
+    }
+    // let sz = centroids.len();
+    let data = TDigest::new(centroids, sum, count as f64, max, min, max_size); // if max_size needs to be usize
+    Box::into_raw(Box::new(data)) as *mut c_void
+}
 
 unsafe extern "C" fn free(value: *mut c_void) {
     drop(Box::from_raw(value.cast::<MyType>()));

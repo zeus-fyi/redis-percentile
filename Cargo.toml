@@ -11,4 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 redis-module = "*"
-tdigest = "0.2"
+tdigest-rs = "0.2"
+ordered-float = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
