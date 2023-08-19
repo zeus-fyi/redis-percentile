@@ -1,6 +1,6 @@
 [package]
 name = "redis-percentile"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Poga Po <poga.po@gmail.com>"]
 edition = "2018"
 
