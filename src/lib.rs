@@ -119,6 +119,7 @@ fn merge(ctx: &Context, args: Vec<RedisString>, merge: MergeType, size: usize) -
         }
     }
     ctx.replicate_verbatim();
+    ctx.reply_simple_string("OK");
     Ok(len.into())
 }
 
