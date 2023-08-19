@@ -118,7 +118,7 @@ fn merge(ctx: &Context, args: Vec<RedisString>, merge: MergeType, size: usize) -
             key.set_value(&MY_REDIS_TYPE, MyType { data })?;
         }
     }
-
+    ctx.replicate_verbatim();
     Ok(len.into())
 }
 
